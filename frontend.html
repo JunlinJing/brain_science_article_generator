@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>脑科学科普文章生成器</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+        .card:hover {
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        .input-style {
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+        .input-style:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        #generatedArticle {
+            line-height: 1.8;
+        }
+        .trend-chip {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .trend-chip:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .api-key-section {
+            border-top: 1px dashed #cbd5e0;
+            border-bottom: 1px dashed #cbd5e0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 py-8">
+    <div class="container mx-auto px-4">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">基于科学文献的脑科学科普文章生成器</h1>
+            <p class="text-gray-600">结合生活与时事，一键生成高质量脑科学科普爆款文章</p>
+        </header>
+
+        <div class="flex flex-col md:flex-row gap-6">
+            <!-- 左侧表单 -->
+            <div class="w-full md:w-1/3 mb-6">
+                <div class="bg-white rounded-lg p-6 card">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">文章设置</h2>
+                    
+                    <!-- 关键词输入 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">脑科学主题/关键词</label>
+                        <input type="text" id="topic" class="w-full p-3 rounded-lg input-style" placeholder="例如：记忆力、大脑发育、睡眠与认知...">
+                    </div>
+                    
+                    <!-- 每日热点标题推荐 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2 font-medium">每日热点话题推荐</label>
+                        <div class="flex flex-wrap gap-2" id="trendingTopics">
+                            <div class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm trend-chip" onclick="selectTrend(this)">世界睡眠日</div>
+                            <div class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm trend-chip" onclick="selectTrend(this)">居家办公</div>
+                            <div class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm trend-chip" onclick="selectTrend(this)">AI与认知</div>
+                            <div class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm trend-chip" onclick="selectTrend(this)">数字健康</div>
+                            <div class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm trend-chip" onclick="selectTrend(this)">情绪管理</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 结合时事热点 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">结合时事/热点</label>
+                        <input type="text" id="trendTopic" class="w-full p-3 rounded-lg input-style" placeholder="例如：世界睡眠日、居家办公...">
+                    </div>
+                    
+                    <!-- 自定义标题 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">自定义标题（可选）</label>
+                        <input type="text" id="customTitle" class="w-full p-3 rounded-lg input-style" placeholder="留空将自动推荐标题">
+                    </div>
+                    
+                    <!-- 目标受众 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">目标受众</label>
+                        <select id="audience" class="w-full p-3 rounded-lg input-style">
+                            <option value="general">大众读者</option>
+                            <option value="parents">家长</option>
+                            <option value="professionals">专业人士</option>
+                            <option value="students">学生</option>
+                            <option value="elderly">老年人</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 文章长度 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">文章长度</label>
+                        <select id="length" class="w-full p-3 rounded-lg input-style">
+                            <option value="short">简短 (1000字左右)</option>
+                            <option value="medium" selected>适中 (2000字左右)</option>
+                            <option value="long">较长 (3000字左右)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 小标题数量 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2 font-medium">小标题数量</label>
+                        <select id="subtitleCount" class="w-full p-3 rounded-lg input-style">
+                            <option value="3">3个</option>
+                            <option value="4" selected>4个</option>
+                            <option value="5">5个</option>
+                            <option value="6">6个</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 文章风格 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2 font-medium">文章风格</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="style-story" class="mr-2" checked>
+                                <label for="style-story">故事化</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="style-data" class="mr-2" checked>
+                                <label for="style-data">数据支持</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="style-metaphor" class="mr-2" checked>
+                                <label for="style-metaphor">比喻类比</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="style-tips" class="mr-2" checked>
+                                <label for="style-tips">实用建议</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- API 设置部分 -->
+                    <div class="api-key-section py-4 my-4">
+                        <h3 class="text-lg font-semibold mb-2 text-gray-800">API 设置</h3>
+                        <div class="mb-3">
+                            <label class="block text-gray-700 mb-1 text-sm">选择 AI 服务</label>
+                            <select id="aiService" class="w-full p-2 rounded-lg input-style text-sm">
+                                <option value="openai">OpenAI</option>
+                                <option value="azure">Azure OpenAI</option>
+                                <option value="anthropic">Anthropic Claude</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-gray-700 mb-1 text-sm">API 密钥</label>
+                            <input type="password" id="apiKey" class="w-full p-2 rounded-lg input-style text-sm" placeholder="输入您的 API 密钥">
+                        </div>
+                        <div id="azureSettings" class="hidden">
+                            <div class="mb-3">
+                                <label class="block text-gray-700 mb-1 text-sm">Azure 端点</label>
+                                <input type="text" id="azureEndpoint" class="w-full p-2 rounded-lg input-style text-sm" placeholder="https://your-resource.openai.azure.com/">
+                            </div>
+                            <div class="mb-3">
+                                <label class="block text-gray-700 mb-1 text-sm">部署名称</label>
+                                <input type="text" id="azureDeployment" class="w-full p-2 rounded-lg input-style text-sm" placeholder="例如: gpt-4-turbo">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">您的 API 密钥不会被保存，仅用于当前会话</p>
+                    </div>
+                    
+                    <!-- 生成按钮 -->
+                    <button id="generateBtn" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium btn-primary">
+                        生成文章
+                    </button>
+                    
+                    <!-- 加载中提示 -->
+                    <div id="loadingIndicator" class="hidden mt-4 flex justify-center items-center">
+                        <div class="loading-spinner mr-3"></div>
+                        <span>正在生成文章，请稍候...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧内容区 -->
+            <div class="w-full md:w-2/3">
+                <div class="bg-white rounded-lg p-6 card min-h-screen">
+                    <h2 class="text-xl font-semibold mb-6 text-gray-800">您的脑科学科普文章</h2>
+                    <div id="articleContent" class="mb-8">
+                        <p class="text-gray-500 text-center py-10">填写左侧表单并点击"生成文章"按钮开始创作</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="mt-10 text-center text-gray-600 text-sm">
+            <p>© 2024 脑科学科普文章生成器 | 基于科学文献的高质量内容</p>
+            <p class="mt-1">所有内容均基于科学研究成果，仅供科普参考</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 选择AI服务时显示/隐藏Azure相关设置
+            document.getElementById('aiService').addEventListener('change', function() {
+                const azureSettings = document.getElementById('azureSettings');
+                if (this.value === 'azure') {
+                    azureSettings.classList.remove('hidden');
+                } else {
+                    azureSettings.classList.add('hidden');
+                }
+            });
+            
+            // 每日热点标题生成和更新
+            generateDailyTrendingTopics();
+            
+            // 生成按钮点击事件
+            document.getElementById('generateBtn').addEventListener('click', generateArticle);
+        });
+        
+        // 选择热点标签
+        function selectTrend(element) {
+            document.getElementById('trendTopic').value = element.innerText;
+        }
+        
+        // 生成每日热点标题
+        function generateDailyTrendingTopics() {
+            const topics = [
+                '世界睡眠日', '居家办公', 'AI与认知', '数字健康', '情绪管理',
+                '春季过敏', '远程学习', '脑力锻炼', '疫后心理', '健康饮食',
+                '注意力训练', '心理健康月', '老年认知', '儿童发展', '压力管理',
+                '屏幕时间', '记忆力提升', '学习技巧', '冥想与大脑', '多巴胺成瘾'
+            ];
+            
+            // 根据当前日期生成伪随机的五个热点话题
+            const today = new Date();
+            const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+            
+            function pseudoRandom(max, prev = -1) {
+                let rand = Math.floor((Math.sin(seed * (prev + 1)) * 10000) % max);
+                return (rand < 0) ? rand + max : rand;
+            }
+            
+            let selectedIndexes = [];
+            let prev = 0;
+            for (let i = 0; i < 5; i++) {
+                let index;
+                do {
+                    index = pseudoRandom(topics.length, prev);
+                    prev = index;
+                } while (selectedIndexes.includes(index));
+                selectedIndexes.push(index);
+            }
+            
+            const container = document.getElementById('trendingTopics');
+            container.innerHTML = '';
+            
+            selectedIndexes.forEach(index => {
+                const chip = document.createElement('div');
+                chip.className = 'px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm trend-chip';
+                chip.textContent = topics[index];
+                chip.onclick = function() { selectTrend(this); };
+                container.appendChild(chip);
+            });
+        }
+        
+        // 文章生成功能
+        async function generateArticle() {
+            const topic = document.getElementById('topic').value;
+            const trendTopic = document.getElementById('trendTopic').value;
+            const customTitle = document.getElementById('customTitle').value;
+            const audience = document.getElementById('audience').value;
+            const length = document.getElementById('length').value;
+            const subtitleCount = document.getElementById('subtitleCount').value;
+            
+            // 文章风格选项
+            const styles = {
+                story: document.getElementById('style-story').checked,
+                data: document.getElementById('style-data').checked,
+                metaphor: document.getElementById('style-metaphor').checked,
+                tips: document.getElementById('style-tips').checked
+            };
+            
+            // API设置
+            const aiService = document.getElementById('aiService').value;
+            const apiKey = document.getElementById('apiKey').value;
+            
+            // 验证必填字段
+            if (!topic) {
+                alert('请输入脑科学主题/关键词');
+                return;
+            }
+            
+            if (!apiKey) {
+                alert('请输入API密钥');
+                return;
+            }
+            
+            // 显示加载状态
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('articleContent').innerHTML = '<p class="text-gray-500 text-center py-10">文章生成中，请稍候...</p>';
+            
+            try {
+                // 构建提示词
+                const prompt = buildPrompt(topic, trendTopic, customTitle, audience, length, subtitleCount, styles);
+                
+                // 根据选择的AI服务调用相应的API
+                let articleContent;
+                if (aiService === 'openai') {
+                    articleContent = await callOpenAI(prompt, apiKey);
+                } else if (aiService === 'azure') {
+                    const endpoint = document.getElementById('azureEndpoint').value;
+                    const deployment = document.getElementById('azureDeployment').value;
+                    if (!endpoint || !deployment) {
+                        alert('请填写Azure端点和部署名称');
+                        return;
+                    }
+                    articleContent = await callAzureOpenAI(prompt, apiKey, endpoint, deployment);
+                } else if (aiService === 'anthropic') {
+                    articleContent = await callAnthropic(prompt, apiKey);
+                }
+                
+                // 显示生成的文章
+                document.getElementById('articleContent').innerHTML = formatArticle(articleContent);
+                
+            } catch (error) {
+                console.error('Error generating article:', error);
+                document.getElementById('articleContent').innerHTML = `
+                    <div class="bg-red-50 text-red-700 p-4 rounded-lg">
+                        <h3 class="font-bold mb-2">生成文章时出错</h3>
+                        <p>${error.message || '请检查API密钥是否正确，或稍后再试'}</p>
+                    </div>
+                `;
+            } finally {
+                // 隐藏加载状态
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+        
+        // 构建提示词
+        function buildPrompt(topic, trendTopic, customTitle, audience, length, subtitleCount, styles) {
+            let audienceText = '大众读者';
+            switch (audience) {
+                case 'parents': audienceText = '家长'; break;
+                case 'professionals': audienceText = '专业人士'; break;
+                case 'students': audienceText = '学生'; break;
+                case 'elderly': audienceText = '老年人'; break;
+            }
+            
+            let lengthText = '2000字左右';
+            switch (length) {
+                case 'short': lengthText = '1000字左右'; break;
+                case 'long': lengthText = '3000字左右'; break;
+            }
+            
+            let styleText = [];
+            if (styles.story) styleText.push('故事化');
+            if (styles.data) styleText.push('数据支持');
+            if (styles.metaphor) styleText.push('比喻类比');
+            if (styles.tips) styleText.push('实用建议');
+            
+            return `请你作为一名专业的脑科学科普作家，撰写一篇关于"${topic}"的科普文章。
+
+要求：
+1. 文章面向${audienceText}，长度${lengthText}
+2. ${customTitle ? `文章标题为：${customTitle}` : '请为文章创建一个吸引人的标题'}
+3. 文章需要包含${subtitleCount}个内容小标题
+4. 风格要求：${styleText.join('、')}
+5. 将脑科学知识与"${trendTopic || '当前热点'}"相结合
+6. 所有内容必须基于科学研究和文献，确保科学准确性
+7. 在文章末尾添加5-8条参考文献，包括作者、标题、期刊、年份等信息，按学术格式排列
+
+文章结构：
+- 引言：介绍主题背景和重要性
+- 正文：${subtitleCount}个小标题的内容展开
+- 实用建议：针对读者的具体可行建议
+- 总结：简要总结要点
+- 参考文献：5-8条学术参考文献
+
+请直接开始撰写完整文章，确保内容科学准确、通俗易懂且引人入胜。`;
+        }
+        
+        // 调用OpenAI API
+        async function callOpenAI(prompt, apiKey) {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4-turbo',
+                    messages: [{
+                        role: 'user',
+                        content: prompt
+                    }],
+                    temperature: 0.7
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || '调用OpenAI API失败');
+            }
+            
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+        
+        // 调用Azure OpenAI API
+        async function callAzureOpenAI(prompt, apiKey, endpoint, deployment) {
+            // 确保endpoint以/结尾
+            if (!endpoint.endsWith('/')) {
+                endpoint += '/';
+            }
+            
+            const response = await fetch(`${endpoint}openai/deployments/${deployment}/chat/completions?api-version=2023-03-15-preview`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': apiKey
+                },
+                body: JSON.stringify({
+                    messages: [{
+                        role: 'user',
+                        content: prompt
+                    }],
+                    temperature: 0.7
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || '调用Azure OpenAI API失败');
+            }
+            
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+        
+        // 调用Anthropic Claude API
+        async function callAnthropic(prompt, apiKey) {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-2.1',
+                    max_tokens: 4000,
+                    messages: [{
+                        role: 'user',
+                        content: prompt
+                    }]
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || '调用Anthropic Claude API失败');
+            }
+            
+            const data = await response.json();
+            return data.content[0].text;
+        }
+        
+        // 格式化文章内容
+        function formatArticle(content) {
+            // 将Markdown格式转换为HTML
+            let formattedContent = content
+                // 转换标题
+                .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold my-4">$1</h1>')
+                .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold my-3 mt-6">$1</h2>')
+                .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold my-2 mt-5">$1</h3>')
+                // 转换段落
+                .replace(/^\s*(\n)?([^\n#].*)/gim, '<p class="my-3 text-gray-800">$2</p>')
+                // 转换粗体
+                .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+                // 转换斜体
+                .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                // 转换列表
+                .replace(/^\s*[\-\*](.*)/gim, '<li class="ml-4 mb-1">$1</li>')
+                // 合并列表项
+                .replace(/<\/li>\n<li/g, '</li><li');
+            
+            // 找到参考文献部分，应用特殊样式
+            const referenceIndex = formattedContent.toLowerCase().indexOf('<h2 class="text-2xl font-bold my-3 mt-6">参考文献');
+            
+            if (referenceIndex !== -1) {
+                const beforeRef = formattedContent.substring(0, referenceIndex);
+                let afterRef = formattedContent.substring(referenceIndex);
+                
+                // 给参考文献部分添加特殊样式
+                afterRef = afterRef.replace(/<li class="ml-4 mb-1">(.*?)<\/li>/g, 
+                    '<li class="ml-4 mb-2 text-gray-700 text-sm">$1</li>');
+                
+                formattedContent = beforeRef + 
+                    '<div class="mt-8 pt-4 border-t border-gray-200">' + 
+                    afterRef + 
+                    '</div>';
+            }
+            
+            return formattedContent;
+        }
+    </script>
+</body>
+</html>
